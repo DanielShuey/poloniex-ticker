@@ -1,0 +1,78 @@
+ruby:
+  currency_pair_list = `ls #{File.join(Config.root, temp)} | grep *_chart`.lines.map(&:chomp)
+  @chart_data = PoloniexTicker.chart_data
+
+.row
+  - currency_pair_list.each do |currency_pair|
+    h4= currency_pair
+    div id="#{currency_pair}" style="height: 260px; width: 100%;"
+
+coffee:
+  create_chart = (name, data) ->
+    new (CanvasJS.Chart)(name,
+      zoomEnabled: false
+      exportEnabled: false
+      backgroundColor: '#000'
+      axisY:
+        includeZero: false
+        lineThickness: 0
+        gridThickness: 0.5
+        gridDashType: 'dash'
+        labelFontSize: 12
+        labelFontFamily: 'Roboto Mono'
+        labelFontColor: '#fff'
+        margin: 0
+        tickLength: 0
+      axisX:
+        interval: 1
+        intervalType: 'day'
+        valueFormatString: 'DDD hh:mmtt'
+        lineThickness: 0
+        gridThickness: 0.5
+        gridDashType: 'dash'
+        labelFontSize: 12
+        labelFontFamily: 'Roboto Mono'
+        labelFontColor: '#fff'
+        margin: 0
+        tickLength: 0
+      toolTip:
+        shared: true
+      data: data
+    )
+
+script type="text/javascript"
+  $( document ).ready(function() {
+    - currency_pair_list.each do |currency_pair|
+      create_chart(#{currency_pair},
+        [       
+          {
+            name: 'Price',
+            type: 'line',
+            color: '#666',
+            markerType: 'none',
+            dataPoints: #{@chart_data[:price].each_with_index.map { |v, i| {x: i, y: v} }.to_json}
+          },
+          {
+            name: 'Threshold',
+            type: 'spline',
+            color: '#2c97de',
+            markerType: 'none',
+            dataPoints: #{@chart_data[:threshold].each_with_index.map { |v, i| {x: i, y: v} }.to_json}
+          },
+          {
+            name: 'Long',
+            type: 'spline',
+            color: '#60BD68',
+            markerType: 'none',
+            dataPoints: #{@chart_data[:long].each_with_index.map { |v, i| {x: i, y: v} }.to_json}
+          },
+          {
+            name: 'Short EMA',
+            type: 'spline',
+            color: '#FAA43A',
+            markerType: 'none',
+            dataPoints: #{@chart_data[:short_ema].each_with_index.map { |v, i| {x: i, y: v} }.to_json}
+          }
+        ]
+      ).render();
+  }
