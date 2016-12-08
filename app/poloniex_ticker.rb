@@ -1,7 +1,9 @@
 class PoloniexTicker
+  REPEAT_PERIOD = 2
+
   class << self
     def run
-      Rufus::Scheduler.new.tap { |s| s.every('1m') { perform } }.join
+      Rufus::Scheduler.new.tap { |s| s.every("#{PoloniexTicker::REPEAT_PERIOD}m") { perform } }.join
     end
 
     def perform
@@ -12,8 +14,9 @@ class PoloniexTicker
     end
 
     def chart_data currency_pair
-      file = File.join(Config.root, temp, "#{currency_pair}_chart")
-      [@price, @threshold, @long, @short_sma, @short_ema].each { |x| x = [] }
+      file = File.join(Config.root, 'temp', "#{currency_pair}_chart.csv")
+      
+      @price = @threshold = @long = @short_sma = @short_ema = []
 
       CSV.foreach(file) do |row|
         @price << row[11]
@@ -35,7 +38,7 @@ class PoloniexTicker
     private
 
     def build_ticker_data
-      @ticker_data = JSON.parse(Poloniex.ticker).map { |k, v| TickerData.new(k, v) }
+      @ticker_data = JSON.parse(Poloniex.ticker.body).select { |k, v| k.start_with? 'BTC' }.map { |k, v| TickerData.new(k, v) }
     end
 
     def update_prices
@@ -43,20 +46,20 @@ class PoloniexTicker
         price = (x.lowest_ask + x.highest_bid) / 2
         file = File.join(Config.root, 'temp', x.currency_pair)
         `echo #{price} >> #{file}`
-        `tail --lines=11000 #{file} > #{file}`
+        `tail --lines=11000 #{file} | sponge #{file}`
       end
     end
 
     def update_ticker
       @compiled_ticker = @ticker_data.map { |x| x.to_h.merge(Calculator.new(x.currency_pair).to_h) }
-      File.open('~/poloniex_ticker.json', 'w') { |f| f.write @compiled_ticker.to_json }
+      File.open(File.join(ENV['HOME'], 'poloniex_ticker.json'), 'w') { |f| f.write(JSON.generate(@compiled_ticker)) }
     end
 
     def update_charts
-      file = File.join(Config.root, 'temp', "#{x.currency_pair}_chart")
       @compiled_ticker.each do |x| 
+        file = File.join(Config.root, 'temp', "#{x[:currency_pair]}_chart.csv")
         `echo #{x.values.join(',')} >> #{file}`
-        `tail --lines=#{Calculator::THRESHOLD_PERIOD} #{file} > #{file}`
+        `tail --lines=#{Calculator::THRESHOLD_PERIOD + 1} #{file} | sponge #{file}`
       end
     end
   end

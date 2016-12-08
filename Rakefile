@@ -12,3 +12,7 @@ require 'config/boot.rb'
 task :run do
   PoloniexTicker.run
 end
+
+task :run_once do
+  PoloniexTicker.perform
+end

@@ -3,10 +3,10 @@ class TickerData
 
   def initialize currency_pair, hash
     @currency_pair = currency_pair
-    hash.each { |k, v| instance_variable_set("@#{k.underscore.to_sym}", v) }
+    hash.each { |k, v| instance_variable_set("@#{k.underscore.to_sym}", BigDecimal.new(v)) }
   end
 
   def to_h
-    instance_variables.map { |x| instance_variable_get x }
+    instance_variables.map { |x| [x[1..-1].to_sym, instance_variable_get(x)] }.to_h
   end
 end

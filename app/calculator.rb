@@ -1,7 +1,7 @@
 class Calculator
-  THRESHOLD_PERIOD = 4320
-  LONG_PERIOD = 1200
-  SHORT_PERIOD = 300
+  THRESHOLD_PERIOD = 4320 / PoloniexTicker::REPEAT_PERIOD
+  LONG_PERIOD = 1200 / PoloniexTicker::REPEAT_PERIOD
+  SHORT_PERIOD = 300 / PoloniexTicker::REPEAT_PERIOD
 
   def initialize currency_pair
     @currency_pair = currency_pair
@@ -17,6 +17,14 @@ class Calculator
     File.join(Config.root, 'temp', @currency_pair)
   end
 
+  def lines_in_file
+    `wc -l #{file}`.to_i
+  end
+
+  def period_for period
+    lines_in_file < period ? lines_in_file : period
+  end
+
   def last_x_prices period
     `tail --lines=#{period} #{file} | paste -sd+`.split('+').map { |x| BigDecimal.new x }
   end
@@ -26,18 +34,18 @@ class Calculator
   end
 
   def threshold
-    BigDecimal.new(`tail --lines=#{THRESHOLD_PERIOD} #{file} | paste -sd+ | bc`) / THRESHOLD_PERIOD
+    BigDecimal.new(`tail --lines=#{THRESHOLD_PERIOD} #{file} | paste -sd+ | bc`) / period_for(THRESHOLD_PERIOD)
   end
   
   def long
-    BigDecimal.new(`tail --lines=#{LONG_PERIOD} #{file} | paste -sd+ | bc`) / LONG_PERIOD
+    BigDecimal.new(`tail --lines=#{LONG_PERIOD} #{file} | paste -sd+ | bc`) / period_for(LONG_PERIOD)
   end
 
   def short_sma
-    BigDecimal.new(`tail --lines=#{SHORT_PERIOD} #{file} | paste -sd+ | bc`) / SHORT_PERIOD
+    BigDecimal.new(`tail --lines=#{SHORT_PERIOD} #{file} | paste -sd+ | bc`) / period_for(SHORT_PERIOD)
   end
 
   def short_ema
-    last_x_prices(SHORT_PERIOD).ema
+    last_x_prices(period_for(SHORT_PERIOD)).ema
   end
 end

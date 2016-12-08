@@ -1,9 +1,8 @@
 ruby:
-  currency_pair_list = `ls #{File.join(Config.root, temp)} | grep *_chart`.lines.map(&:chomp)
-  @chart_data = PoloniexTicker.chart_data
+  @currency_pair_list = JSON.parse(`cat ~/poloniex_ticker.json`).sort { |x, y| y['base_volume'].to_f <=> x['base_volume'].to_f }.map { |x| x['currency_pair'] }[0..5]
 
 .row
-  - currency_pair_list.each do |currency_pair|
+  - @currency_pair_list.each do |currency_pair|
     h4= currency_pair
     div id="#{currency_pair}" style="height: 260px; width: 100%;"
 
@@ -25,8 +24,7 @@ coffee:
         tickLength: 0
       axisX:
         interval: 1
-        intervalType: 'day'
-        valueFormatString: 'DDD hh:mmtt'
+        intervalType: 'number'
         lineThickness: 0
         gridThickness: 0.5
         gridDashType: 'dash'
@@ -40,39 +38,41 @@ coffee:
       data: data
     )
 
-script type="text/javascript"
-  $( document ).ready(function() {
-    - currency_pair_list.each do |currency_pair|
-      create_chart(#{currency_pair},
-        [       
-          {
-            name: 'Price',
-            type: 'line',
-            color: '#666',
-            markerType: 'none',
-            dataPoints: #{@chart_data[:price].each_with_index.map { |v, i| {x: i, y: v} }.to_json}
-          },
-          {
-            name: 'Threshold',
-            type: 'spline',
-            color: '#2c97de',
-            markerType: 'none',
-            dataPoints: #{@chart_data[:threshold].each_with_index.map { |v, i| {x: i, y: v} }.to_json}
-          },
-          {
-            name: 'Long',
-            type: 'spline',
-            color: '#60BD68',
-            markerType: 'none',
-            dataPoints: #{@chart_data[:long].each_with_index.map { |v, i| {x: i, y: v} }.to_json}
-          },
-          {
-            name: 'Short EMA',
-            type: 'spline',
-            color: '#FAA43A',
-            markerType: 'none',
-            dataPoints: #{@chart_data[:short_ema].each_with_index.map { |v, i| {x: i, y: v} }.to_json}
-          }
-        ]
-      ).render();
-  }
+- @currency_pair_list.each do |currency_pair|
+  - @chart_data = PoloniexTicker.chart_data currency_pair
+
+  javascript:
+    create_chart(#{currency_pair},
+      [       
+        {
+          name: 'Price',
+          type: 'line',
+          color: '#666',
+          markerType: 'none',
+          dataPoints: #{@chart_data[:price].each_with_index.map { |v, i| {x: i, y: v.to_f} }.to_json.html_safe}
+        },
+        {
+          name: 'Threshold',
+          type: 'spline',
+          color: '#2c97de',
+          markerType: 'none',
+          dataPoints: #{@chart_data[:threshold].each_with_index.map { |v, i| {x: i, y: v.to_f} }.to_json.html_safe}
+        },
+        {
+          name: 'Long',
+          type: 'spline',
+          color: '#60BD68',
+          markerType: 'none',
+          dataPoints: #{@chart_data[:long].each_with_index.map { |v, i| {x: i, y: v.to_f} }.to_json.html_safe}
+        },
+        {
+          name: 'Short EMA',
+          type: 'spline',
+          color: '#FAA43A',
+          markerType: 'none',
+          dataPoints: #{@chart_data[:short_ema].each_with_index.map { |v, i| {x: i, y: v.to_f} }.to_json.html_safe}
+        }
+      ]
+    ).render();
+
+
